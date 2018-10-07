@@ -1,11 +1,14 @@
 // Copyright (C) 2017 Nokia
 
-import {AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Input, OnDestroy, SimpleChanges, ViewChild} from '@angular/core';
 import {TaskExec} from "../../shared/models/taskExec";
 import {Graph} from "../../engines/graph/graph";
 import {GraphEdge, toGraphData} from "../../engines/graph/translator";
 import {GraphUtils} from "../../engines/graph/graphUtils";
 import * as $ from 'jquery';
+import {MistralService} from "../../engines/mistral/mistral.service";
+import {Router} from "@angular/router";
+import {SubWorkflowExecution} from "../../shared/models";
 
 @Component({
     selector: 'cf-workflow-graph',
@@ -16,11 +19,16 @@ export class WorkflowGraphComponent implements AfterViewInit, OnDestroy {
 
     private _tasks: TaskExec[] = [];
     private graphElements: {nodes: any, edges: GraphEdge[]};
+    subWfExecutions: SubWorkflowExecution[] = null;
 
     @ViewChild("graphContainer") private container: ElementRef;
     @ViewChild("zoomContainer") private zoomContainer: ElementRef;
 
     private graph: Graph = null;
+
+    constructor(private service: MistralService, private router: Router) {
+
+    }
 
     @Input()
     set tasks(tasks: TaskExec[]) {
@@ -95,6 +103,33 @@ export class WorkflowGraphComponent implements AfterViewInit, OnDestroy {
 
     trackby(index: number, task: TaskExec) {
         return `${task.id}_${task.state}`;
+    }
+
+    // private async loadWfExecutionsByTaskExecutionId(taskExecId: string) {
+    //     this.subWfExecutions = await this.service.wfExecutionsByTaskExecutionId(taskExecId).toPromise();
+    // }
+
+    private async loadWfExecutionsByTaskExecutionId(taskExecId: string) {
+        this.subWfExecutions = await this.service.wfExecutionsByTaskExecutionId(taskExecId).toPromise();
+    }
+
+    loadSubWf(task: TaskExec){
+        console.log("load");
+        this.loadWfExecutionsByTaskExecutionId(task.id);
+    }
+
+    drillDown(e){
+        if(this.subWfExecutions == null) {
+            return
+        }
+        e.stopPropagation();
+        console.log(this.subWfExecutions);
+
+        if(this.subWfExecutions.length == 1) {
+            let execution = this.subWfExecutions[0];
+            this.router.navigate(['/executions', execution.id]);
+            return false;
+        }
     }
 
 }
